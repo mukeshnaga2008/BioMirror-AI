@@ -89,7 +89,7 @@ BioMirror AI represents a fundamental shift: from treating illness to understand
 ## 🧠 Meet BioMirror AI: The Solution Universe
 
 <p align="center">
-  <img src="./assets/logos/biomirror-logo.png" width="250"/>
+  <img src="frontend/assets/logos/biomirror-logo.png" width="250"/>
 </p>
 
 <h2 align="center">
