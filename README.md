@@ -144,7 +144,7 @@ It becomes a mirror of your health journey.
 
 ---
 
-## 🧠 Inside BioMirror AI: The MEDMIRROR AI ENGINE™
+## 🧠 Inside BioMirror AI: The MEDMIRROR AI ENGINE
 
 ### The AI Brain That Understands Your Future Health
 
@@ -162,12 +162,12 @@ A personalized AI reasoning system that learns, predicts, simulates, and explain
 
 ```mermaid
 graph TD
-    A[USER HEALTH DATA] --> B(DATA INTELLIGENCE LAYER)
-    B --> C(MEDMIRROR AI ENGINE™)
-    C --> D(DIGITAL HEALTH TWIN)
-    D --> E(INTELLIGENT OUTPUTS)
+    A[USER HEALTH DATA] --> B[DATA INTELLIGENCE LAYER]
+    B --> C[MEDMIRROR AI ENGINE]
+    C --> D[DIGITAL HEALTH TWIN]
+    D --> E[INTELLIGENT OUTPUTS]
 
-    subgraph DATA INTELLIGENCE LAYER
+    subgraph DATA_INTELLIGENCE_LAYER
         B1[Medical Records]
         B2[Lifestyle Data]
         B3[Symptoms]
@@ -175,7 +175,7 @@ graph TD
         B5[Reports & Documents]
     end
 
-    subgraph MEDMIRROR AI ENGINE™
+    subgraph MEDMIRROR_AI_ENGINE
         C1[AI Analysis]
         C2[Risk Prediction]
         C3[Pattern Detection]
@@ -183,46 +183,46 @@ graph TD
         C5[Explainable AI]
     end
 
-    subgraph DIGITAL HEALTH TWIN
+    subgraph DIGITAL_HEALTH_TWIN
         D1[Personal Simulation]
         D2[Future Health States]
     end
 
-    subgraph INTELLIGENT OUTPUTS
+    subgraph INTELLIGENT_OUTPUTS
         E1[Risk Alerts]
         E2[Future Scenarios]
         E3[Health Recommendations]
         E4[Doctor Insights]
     end
 
-    A --- B1
-    A --- B2
-    A --- B3
-    A --- B4
-    A --- B5
+    A --> B1
+    A --> B2
+    A --> B3
+    A --> B4
+    A --> B5
 
-    B1 --- C
-    B2 --- C
-    B3 --- C
-    B4 --- C
-    B5 --- C
+    B1 --> C
+    B2 --> C
+    B3 --> C
+    B4 --> C
+    B5 --> C
 
-    C1 --- C
-    C2 --- C
-    C3 --- C
-    C4 --- C
-    C5 --- C
+    C --> C1
+    C --> C2
+    C --> C3
+    C --> C4
+    C --> C5
 
-    C --- D1
-    C --- D2
+    C --> D1
+    C --> D2
 
-    D1 --- E
-    D2 --- E
+    D1 --> E
+    D2 --> E
 
-    E --- E1
-    E --- E2
-    E --- E3
-    E --- E4
+    E --> E1
+    E --> E2
+    E --> E3
+    E --> E4
 ```
 
 MEDMIRROR AI acts as the central nervous system of BioMirror AI, continuously processing multiple health dimensions and building a dynamic understanding of an individual's health trajectory. Unlike traditional healthcare applications that only store information, BioMirror AI learns, reasons, predicts, and simulates.
@@ -270,7 +270,9 @@ MEDMIRROR AI generates a dynamic wellness intelligence score (e.g., 87%) based o
 ## 🏗️ Technical Architecture
 
 ### BioMirror AI Platform
-
+<p align="center">
+  <img src="assets/icons/tech-stack.png" width="500" alt="BioMirror AI Logo">
+</p>
 ```mermaid
 graph TD
     A[FRONTEND] --> B(API LAYER)
