@@ -8,7 +8,7 @@ import {
   AlertTriangle, Share2, CheckCircle2, Lock, Phone,
   ArrowRight, Search, Menu, Grid, FileSpreadsheet, Bell, Zap, Eye,
   RefreshCw, Check, X, ArrowLeft, Download, ShieldAlert,
-  Calendar, Volume2, VolumeX, AlertOctagon, HelpCircle, EyeOff, Sparkles, HeartPulse
+  Calendar, Volume2, VolumeX, AlertOctagon, HelpCircle, EyeOff, Sparkles, HeartPulse, LogOut
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
@@ -123,6 +123,8 @@ export default function App() {
   const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
   const [otpSent, setOtpSent] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState('');
+  const [simulationView, setSimulationView] = useState<'3d' | 'hologram'>('3d');
+  const [visibleOtpPopup, setVisibleOtpPopup] = useState<string | null>(null);
 
   // Doctor Share inputs
   const [docName, setDocName] = useState('');
@@ -144,12 +146,23 @@ export default function App() {
 
   // SOS Scan Overlay Mock
   const [sosScanActive, setSosScanActive] = useState(false);
+  const [selectedTimelineNode, setSelectedTimelineNode] = useState<any | null>(null);
 
   // Handle siren audio toggle
   useEffect(() => {
     playSirenSound(emergencyModeActive);
     return () => playSirenSound(false);
   }, [emergencyModeActive]);
+
+  // Dismiss OTP after 10 seconds
+  useEffect(() => {
+    if (visibleOtpPopup) {
+      const timer = setTimeout(() => {
+        setVisibleOtpPopup(null);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [visibleOtpPopup]);
 
   // Handle Drag & Drop
   const handleDrag = (e: React.DragEvent) => {
@@ -190,13 +203,12 @@ export default function App() {
       if (!response.ok) throw new Error("Failed to request verification token");
       const data = await response.json();
       setGeneratedOtp(data.simulatedOtp);
-      alert(`[BIOMIRROR SYSTEM] Secure Verification token transmitted: ${data.simulatedOtp}`);
+      setVisibleOtpPopup(data.simulatedOtp);
     } catch (e) {
       console.error(e);
-      alert("Error initiating authentication pipeline. Running in local simulation mode.");
       const fallback = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(fallback);
-      alert(`[BIOMIRROR LOCAL] Simulated OTP: ${fallback}`);
+      setVisibleOtpPopup(fallback);
     }
   };
 
@@ -272,11 +284,11 @@ export default function App() {
     switch (currentScreen) {
       case 'login':
         return (
-          <div className="min-h-screen flex flex-col md:flex-row relative bg-[#030712]">
+          <div className="min-h-screen flex flex-col md:flex-row relative grand-hologram-bg">
             {/* Background elements */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,242,254,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,242,254,0.02)_1px,transparent_1px)] bg-[size:35px_35px] opacity-[0.4]" />
 
-            {/* Left Side: Upgraded 3D Anatomy Model (65%) */}
+            {/* Left Side: Login Screen Image (65%) */}
             <div className="w-full md:w-2/3 relative flex flex-col justify-between p-8 border-r border-cyan-950/40">
               {/* Floating Indicators */}
               <div className="absolute top-8 left-8 flex flex-col gap-3.5 z-10">
@@ -290,10 +302,14 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 3D Model View */}
+              {/* Login Hologram Image */}
               <div className="flex-1 flex items-center justify-center relative mt-16 md:mt-0">
-                <div className="w-full h-full max-w-[500px] max-h-[500px]">
-                  <DigitalTwin />
+                <div className="w-full h-full max-w-[500px] max-h-[500px] flex items-center justify-center">
+                  <img 
+                    src="/login_screen.png" 
+                    className="w-full max-h-[440px] object-contain rounded-2xl border border-cyan-500/20 shadow-2xl glow-border-cyan" 
+                    alt="BioMirror AI Holographic Core" 
+                  />
                 </div>
               </div>
 
@@ -509,9 +525,9 @@ export default function App() {
 
       case 'onboarding':
         return (
-          <div className="min-h-screen flex flex-col md:flex-row relative bg-[#030712]">
+          <div className="min-h-screen flex flex-col md:flex-row relative grand-hologram-bg">
             {/* Left Panel: Continuous Twin Render */}
-            <div className="w-full md:w-2/3 bg-[#030712] relative flex flex-col justify-between p-8 border-r border-cyan-950/40">
+            <div className="w-full md:w-2/3 bg-[#030712]/30 backdrop-blur-sm relative flex flex-col justify-between p-8 border-r border-cyan-950/40">
               {/* Onboarding Live Status */}
               <div className="absolute top-8 left-8 z-10 w-72 glass-panel p-5 rounded-2xl space-y-3">
                 <h3 className="text-xs font-mono font-bold text-cyan-400 tracking-widest uppercase">Live AI Twin Sync Status</h3>
@@ -806,10 +822,40 @@ export default function App() {
                     <h3 className="text-2xl font-bold text-white">Digital Twin Created</h3>
                     
                     <button 
-                      onClick={async () => {
-                        await registerUser(onboardPassword);
+                      onClick={() => {
+                        useHealthStore.setState({
+                          isLoggedIn: true,
+                          currentScreen: 'dashboard',
+                          user: {
+                            name: onboardName || 'Mukesh Kumar',
+                            email: onboardEmail || 'mukesh@biomirror.ai',
+                            gender: onboardGender,
+                            age: onboardAge,
+                            height: onboardHeight,
+                            weight: onboardWeight,
+                            bloodGroup: onboardBlood,
+                            emergencyContact: {
+                              name: 'John Doe',
+                              relation: 'Friend',
+                              phone: '+91 98765 43210'
+                            },
+                            allergies: ['Penicillin'],
+                            chronicConditions: [],
+                            medications: ['Vitamin D Supplement']
+                          },
+                          healthScore: 0,
+                          extractedBiomarkers: [],
+                          organs: {
+                            brain: { name: 'Brain', status: 'unknown', healthScore: 0, biomarkers: [], reason: 'Pending first report upload.', details: 'Waiting for report sync.' },
+                            heart: { name: 'Heart', status: 'unknown', healthScore: 0, biomarkers: [], reason: 'Pending first report upload.', details: 'Waiting for report sync.' },
+                            liver: { name: 'Liver', status: 'unknown', healthScore: 0, biomarkers: [], reason: 'Pending first report upload.', details: 'Waiting for report sync.' },
+                            lungs: { name: 'Lungs', status: 'unknown', healthScore: 0, biomarkers: [], reason: 'Pending first report upload.', details: 'Waiting for report sync.' },
+                            kidneys: { name: 'Kidneys', status: 'unknown', healthScore: 0, biomarkers: [], reason: 'Pending first report upload.', details: 'Waiting for report sync.' },
+                            bones: { name: 'Bones', status: 'unknown', healthScore: 0, biomarkers: [], reason: 'Pending first report upload.', details: 'Waiting for report sync.' }
+                          }
+                        });
                       }}
-                      className="w-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-[#030712] font-extrabold py-4 rounded-xl shadow-lg mt-6"
+                      className="w-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-[#030712] font-extrabold py-4 rounded-xl shadow-lg mt-6 cursor-pointer"
                     >
                       ENTER MY DASHBOARD
                     </button>
@@ -823,7 +869,7 @@ export default function App() {
       case 'dashboard':
       default:
         return (
-          <div className="min-h-screen bg-[#030712] flex flex-col md:flex-row relative">
+          <div className="min-h-screen grand-hologram-bg flex flex-col md:flex-row relative">
             {/* Left Sidebar */}
             <div className="w-full md:w-20 lg:w-64 bg-[#050a18]/80 border-r border-cyan-950/40 p-4 flex flex-col justify-between z-20 shrink-0 backdrop-blur-md">
               <div className="space-y-8">
@@ -850,9 +896,7 @@ export default function App() {
                     { id: 'doctor_portal', label: 'Doctor Share', icon: Share2 },
                     { id: 'simulation', label: 'Health Simulation', icon: Sliders },
                     { id: 'profile', label: 'User Profile', icon: User },
-                    { id: 'privacy', label: 'Privacy & Security', icon: Shield },
-                    { id: 'settings', label: 'Settings', icon: Settings },
-                    { id: 'about', label: 'About', icon: Info }
+                    { id: 'privacy', label: 'Privacy & Security', icon: Shield }
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
@@ -868,8 +912,6 @@ export default function App() {
                           if (item.id === 'simulation') setScreen('simulation');
                           if (item.id === 'profile') setScreen('profile');
                           if (item.id === 'privacy') setScreen('privacy');
-                          if (item.id === 'settings') setScreen('settings');
-                          if (item.id === 'about') setScreen('about');
                         }}
                         className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-medium transition-all ${
                           activeTab === item.id 
@@ -886,9 +928,9 @@ export default function App() {
               </div>
 
               {/* User Profile */}
-              <div className="border-t border-cyan-950/40 pt-4 flex items-center gap-3 px-2 justify-between">
+              <div className="border-t border-cyan-950/40 pt-4 flex flex-col gap-3 px-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border border-cyan-400/20 overflow-hidden bg-cyan-900/30">
+                  <div className="w-10 h-10 rounded-full border border-cyan-400/20 overflow-hidden bg-cyan-900/30 shrink-0">
                     <img src={userAvatar} className="w-full h-full object-cover" alt="User" />
                   </div>
                   <div className="lg:block hidden text-left overflow-hidden">
@@ -896,11 +938,13 @@ export default function App() {
                     <div className="text-[10px] font-mono text-cyan-400/60 truncate">{user.email}</div>
                   </div>
                 </div>
+                
                 <button 
                   onClick={logout}
-                  className="lg:block hidden text-[10px] font-mono text-red-400 hover:underline cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-2 bg-red-950/30 border border-red-500/20 hover:bg-red-950/60 text-red-400 rounded-xl font-mono text-[10px] font-bold tracking-wider cursor-pointer transition-all"
                 >
-                  LOGOUT
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="lg:block hidden">LOGOUT SYSTEM</span>
                 </button>
               </div>
             </div>
@@ -1025,26 +1069,34 @@ export default function App() {
                 </div>
 
                 {/* Area Chart Trend */}
-                <div className="col-span-1 xl:col-span-3 glass-panel rounded-2xl p-6">
-                  <h3 className="text-xs font-mono text-cyan-400 uppercase tracking-widest mb-4">Historical Wellness Delta Chart</h3>
-                  <div className="h-56 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="scoreColor" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#00f2fe" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#0077ff" stopOpacity={0.0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(6, 182, 212, 0.05)" />
-                        <XAxis dataKey="name" stroke="#6b7280" fontSize={11} tickLine={false} />
-                        <YAxis domain={[70, 100]} stroke="#6b7280" fontSize={11} tickLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#0a0f1e', borderColor: 'rgba(0, 242, 254, 0.2)', color: '#fff' }} />
-                        <Area type="monotone" dataKey="score" stroke="#00f2fe" strokeWidth={2.5} fillOpacity={1} fill="url(#scoreColor)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                {healthScore > 0 ? (
+                  <div className="col-span-1 xl:col-span-3 glass-panel rounded-2xl p-6">
+                    <h3 className="text-xs font-mono text-cyan-400 uppercase tracking-widest mb-4">Historical Wellness Delta Chart</h3>
+                    <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="scoreColor" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#00f2fe" stopOpacity={0.4}/>
+                              <stop offset="95%" stopColor="#0077ff" stopOpacity={0.0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(6, 182, 212, 0.05)" />
+                          <XAxis dataKey="name" stroke="#6b7280" fontSize={11} tickLine={false} />
+                          <YAxis domain={[70, 100]} stroke="#6b7280" fontSize={11} tickLine={false} />
+                          <Tooltip contentStyle={{ backgroundColor: '#0a0f1e', borderColor: 'rgba(0, 242, 254, 0.2)', color: '#fff' }} />
+                          <Area type="monotone" dataKey="score" stroke="#00f2fe" strokeWidth={2.5} fillOpacity={1} fill="url(#scoreColor)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="col-span-1 xl:col-span-3 glass-panel rounded-2xl p-8 flex flex-col items-center justify-center text-center text-gray-500 min-h-[160px]">
+                    <Clock className="w-8 h-8 text-cyan-500/40 mb-2 animate-pulse" />
+                    <span className="text-xs font-mono text-[#00f2fe]/80 uppercase tracking-wider">Historical Delta Logs Locked</span>
+                    <p className="text-[10px] text-gray-400 mt-1 max-w-sm">Please upload your initial laboratory health reports to synchronize visual delta charts.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1087,6 +1139,46 @@ export default function App() {
                     SELECT REPORT
                   </div>
                 </label>
+              </div>
+
+              {/* Download Sample Reports */}
+              <div className="mt-2 border-t border-cyan-950/40 pt-4">
+                <h4 className="text-xs font-mono text-[#00f2fe]/95 uppercase tracking-wider mb-3">Download Sample Reports for Demonstration</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <a 
+                    href="/sample_metabolic.pdf" 
+                    download="sample_metabolic.pdf"
+                    className="p-3 bg-cyan-950/20 border border-cyan-400/20 hover:border-cyan-400/50 hover:bg-cyan-950/40 rounded-xl flex flex-col justify-between transition-all cursor-pointer"
+                  >
+                    <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase">Report 1: Metabolic</span>
+                    <span className="text-[9px] text-gray-400 mt-1">Glucose & Liver ALT markers</span>
+                    <span className="text-[10px] text-emerald-400 hover:underline mt-2 font-mono flex items-center gap-1 font-bold">
+                      Download PDF
+                    </span>
+                  </a>
+                  <a 
+                    href="/sample_skeletal.pdf" 
+                    download="sample_skeletal.pdf"
+                    className="p-3 bg-cyan-950/20 border border-cyan-400/20 hover:border-cyan-400/50 hover:bg-cyan-950/40 rounded-xl flex flex-col justify-between transition-all cursor-pointer"
+                  >
+                    <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase">Report 2: Skeletal</span>
+                    <span className="text-[9px] text-gray-400 mt-1">Vitamin D3 & Bone density</span>
+                    <span className="text-[10px] text-emerald-400 hover:underline mt-2 font-mono flex items-center gap-1 font-bold">
+                      Download PDF
+                    </span>
+                  </a>
+                  <a 
+                    href="/sample_cardio.pdf" 
+                    download="sample_cardio.pdf"
+                    className="p-3 bg-cyan-950/20 border border-cyan-400/20 hover:border-cyan-400/50 hover:bg-cyan-950/40 rounded-xl flex flex-col justify-between transition-all cursor-pointer"
+                  >
+                    <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase">Report 3: Cardio</span>
+                    <span className="text-[9px] text-gray-400 mt-1">Hemoglobin & Kidney health</span>
+                    <span className="text-[10px] text-emerald-400 hover:underline mt-2 font-mono flex items-center gap-1 font-bold">
+                      Download PDF
+                    </span>
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -1249,15 +1341,48 @@ export default function App() {
                 <div className="pt-4 border-t border-cyan-950/30 flex gap-3 text-xs">
                   <button 
                     onClick={() => {
-                      if (selectedOrgan === 'bones') {
-                        alert("Vitamin D3 (18 ng/mL) is below the recommended range of 30-100.\nActionable Plan:\n- Standard D3 supplementation: 2000 IU daily.\n- Walk in safe sun for 20 minutes daily.\n- Increase intake of dairy, eggs, and oily fish.");
-                      } else if (selectedOrgan === 'liver') {
-                        alert("ALT Enzyme (52 U/L) is slightly elevated.\nActionable Plan:\n- Limit processed sugars and dietary fats.\n- Ensure baseline hydration: 2.5L daily.\n- Repeat LFT profile panel in 30 days.");
-                      } else {
-                        alert("Biomarkers are within reference boundaries. Maintain daily baseline.");
+                      const organ = selectedOrgan || 'general';
+                      let eventTitle = "Scheduled: General Wellness Maintenance";
+                      let eventDetails = "All biomarkers are within reference boundaries. Maintain daily baseline physical activity and clean diet.";
+                      let eventIcon = "🌿";
+                      
+                      if (organ === 'bones') {
+                        eventTitle = "Scheduled: Vitamin D3 Supplementation Campaign";
+                        eventDetails = "Actionable Protocol: Daily 2000 IU D3 supplementation, 20 minutes morning sun exposure, increase intake of dairy and eggs.";
+                        eventIcon = "🌞";
+                      } else if (organ === 'liver') {
+                        eventTitle = "Scheduled: Liver ALT Enzyme Clearing Protocol";
+                        eventDetails = "Actionable Protocol: Restrict refined sugars and trans fats, enforce 2.5L daily hydration target, repeat LFT panel in 30 days.";
+                        eventIcon = "💧";
+                      } else if (organ === 'heart') {
+                        eventTitle = "Scheduled: Cardiovascular Re-oxygenation Program";
+                        eventDetails = "Actionable Protocol: Focus on iron-rich leafy greens, light aerobic cardio (30 mins/day), monitor resting pulse.";
+                        eventIcon = "❤️";
+                      } else if (organ === 'kidneys') {
+                        eventTitle = "Scheduled: Glomerular Filtration Cleansing";
+                        eventDetails = "Actionable Protocol: Increase water intake, moderate dietary sodium and protein load, monitor creatinine levels.";
+                        eventIcon = "🧪";
                       }
+
+                      const newEvent = {
+                        id: `rec-${Date.now()}`,
+                        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        title: eventTitle,
+                        category: 'treatment' as const,
+                        status: 'Scheduled',
+                        score: healthScore || 85,
+                        details: eventDetails,
+                        icon: eventIcon
+                      };
+
+                      useHealthStore.setState((state) => ({
+                        timelineEvents: [newEvent, ...state.timelineEvents]
+                      }));
+
+                      setActiveTab('timeline');
+                      setScreen('timeline');
                     }} 
-                    className="flex-1 py-2.5 bg-cyan-950/40 hover:bg-cyan-950 border border-cyan-400/20 text-[#00f2fe] rounded-lg text-center font-bold"
+                    className="flex-1 py-2.5 bg-cyan-950/40 hover:bg-cyan-950 border border-cyan-400/20 text-[#00f2fe] rounded-lg text-center font-bold cursor-pointer"
                   >
                     AI RECOMMENDATION
                   </button>
@@ -1363,9 +1488,9 @@ export default function App() {
 
       case 'timeline':
         return (
-          <div className="min-h-screen bg-[#030712] p-8 flex flex-col justify-between">
+          <div className="min-h-screen bg-[#030712] p-8 flex flex-col justify-between relative">
             <div>
-              <button onClick={() => setScreen('dashboard')} className="flex items-center gap-1.5 text-xs text-cyan-400/60 hover:text-cyan-400 font-mono mb-4">
+              <button onClick={() => setScreen('dashboard')} className="flex items-center gap-1.5 text-xs text-cyan-400/60 hover:text-cyan-400 font-mono mb-4 cursor-pointer">
                 <ArrowLeft className="w-4 h-4" /> Back to Dashboard
               </button>
               <h1 className="text-2xl font-bold font-mono text-white">Virtual Health Timeline Journey</h1>
@@ -1378,29 +1503,99 @@ export default function App() {
               <div className="absolute left-8 right-8 top-1/2 h-0.5 bg-gradient-to-r from-cyan-950 via-cyan-500 to-emerald-500 -translate-y-1/2 z-0" />
               
               <div className="flex justify-between items-center relative z-10 w-full min-w-[700px] px-8">
-                {timelineEvents.map((event, idx) => (
-                  <div key={event.id} className="flex flex-col items-center text-center space-y-4 max-w-[200px]">
-                    <div className="text-xs font-mono text-cyan-400">{event.date}</div>
-                    
-                    <button 
-                      onClick={() => alert(`Node Detail:\nTitle: ${event.title}\nHealth Index: ${event.score}\nDetail: ${event.details}`)}
-                      className="w-14 h-14 rounded-full bg-[#050a18] border-2 border-cyan-400 flex items-center justify-center text-xl font-bold text-white hover:scale-110 hover:border-emerald-400 transition-all duration-300 glow-border-cyan"
-                    >
-                      {event.icon}
-                    </button>
-                    
-                    <div className="space-y-1">
-                      <div className="text-xs font-bold text-white leading-tight">{event.title}</div>
-                      <div className="text-[10px] font-mono text-emerald-400">Score: {event.score}/100</div>
+                {timelineEvents.map((event, idx) => {
+                  const isReport = event.category === 'report';
+                  const isTreatment = event.category === 'treatment';
+                  const isSimulation = event.category === 'simulation';
+                  
+                  return (
+                    <div key={event.id} className="flex flex-col items-center text-center space-y-4 max-w-[200px]">
+                      <div className="text-xs font-mono text-cyan-400">{event.date}</div>
+                      
+                      <button 
+                        onClick={() => setSelectedTimelineNode(event)}
+                        className={`w-16 h-16 rounded-full bg-[#050a18] border-2 flex items-center justify-center hover:scale-115 transition-all duration-300 cursor-pointer ${
+                          isReport 
+                            ? 'border-cyan-400 glow-border-cyan' 
+                            : isTreatment 
+                            ? 'border-red-400 glow-border-red'
+                            : isSimulation
+                            ? 'border-amber-400 glow-border-amber'
+                            : 'border-emerald-400 glow-border-emerald'
+                        }`}
+                      >
+                        {isReport ? (
+                          <FileSpreadsheet className="w-6 h-6 text-cyan-400" />
+                        ) : isTreatment ? (
+                          <HeartPulse className="w-6 h-6 text-red-400" />
+                        ) : isSimulation ? (
+                          <Sliders className="w-6 h-6 text-amber-400" />
+                        ) : (
+                          <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                        )}
+                      </button>
+                      
+                      <div className="space-y-1">
+                        <div className="text-xs font-bold text-white leading-tight truncate max-w-[130px]">{event.title}</div>
+                        <div className={`text-[10px] font-mono font-bold ${
+                          isReport ? 'text-cyan-400' : isTreatment ? 'text-red-400' : isSimulation ? 'text-amber-400' : 'text-emerald-400'
+                        }`}>
+                          {event.status}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             <div className="flex justify-between text-xs text-gray-400">
               <span>Timeline Nodes Tracked: {timelineEvents.length}</span>
             </div>
+
+            {/* Glowing Detailed Timeline Event Preview Modal */}
+            {selectedTimelineNode && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="w-full max-w-md glass-panel p-6 rounded-3xl border border-cyan-400/30 relative overflow-hidden animate-zoomIn">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none" />
+                  
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest block">{selectedTimelineNode.date}</span>
+                      <h3 className="text-base font-extrabold text-white font-mono uppercase mt-1">{selectedTimelineNode.title}</h3>
+                    </div>
+                    <button 
+                      onClick={() => setSelectedTimelineNode(null)} 
+                      className="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-400/20 hover:border-cyan-400 flex items-center justify-center text-white cursor-pointer"
+                    >
+                      <X className="w-4.5 h-4.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-3.5 mt-2">
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-cyan-950/40">
+                      <span className="text-gray-400">Category:</span>
+                      <span className="font-mono text-cyan-400 uppercase font-bold">{selectedTimelineNode.category}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs pb-1.5 border-b border-cyan-950/40">
+                      <span className="text-gray-400">Calibration Score:</span>
+                      <span className="font-mono text-white font-bold">{selectedTimelineNode.score}/100</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-gray-400 uppercase block mb-1">Details & Protocol</span>
+                      <p className="text-xs text-gray-200 leading-relaxed font-sans">{selectedTimelineNode.details}</p>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => setSelectedTimelineNode(null)}
+                    className="w-full mt-6 py-2 bg-gradient-to-r from-cyan-400 to-[#0077ff] text-[#030712] font-bold text-xs rounded-xl cursor-pointer"
+                  >
+                    DISMISS DETAILS
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -1413,7 +1608,7 @@ export default function App() {
 
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <button onClick={() => setScreen('dashboard')} className="flex items-center gap-1.5 text-xs text-cyan-400/60 hover:text-cyan-400 font-mono mb-4">
+                  <button onClick={() => setScreen('dashboard')} className="flex items-center gap-1.5 text-xs text-cyan-400/60 hover:text-cyan-400 font-mono mb-4 cursor-pointer">
                     <ArrowLeft className="w-4 h-4" /> Back to Dashboard
                   </button>
                   <h1 className="text-2xl font-bold font-mono text-white flex items-center gap-2">
@@ -1421,7 +1616,7 @@ export default function App() {
                   </h1>
                 </div>
                 <div className={`px-3 py-1 rounded font-mono text-xs font-bold ${
-                  emergencyModeActive ? 'bg-red-500/20 text-red-400' : 'bg-cyan-950/50 text-cyan-400'
+                  emergencyModeActive ? 'bg-red-500/20 text-red-400 animate-pulse' : 'bg-cyan-950/50 text-cyan-400'
                 }`}>
                   SOS STATUS: {emergencyModeActive ? 'ACTIVE' : 'INACTIVE'}
                 </div>
@@ -1448,7 +1643,7 @@ export default function App() {
                 <div className="flex flex-col items-center">
                   <div className="p-4 bg-white rounded-2xl border-4 border-red-500/40 glow-border-red">
                     <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${API_BASE}/api/v1/sos/report/sos-${user.email}`} 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=http://100.192.2.34:8000/api/v1/sos/report/sos-${user.email}`} 
                       className="w-36 h-36"
                       alt="Scannable SOS QR"
                     />
@@ -1457,12 +1652,31 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Holographic Diagnostic Scans (SOS Broadcast Deck) */}
+              <div className="pt-6 border-t border-red-500/10 mt-6 space-y-3">
+                <span className="text-[10px] font-mono text-red-400 font-bold block uppercase tracking-wider">Holographic Diagnostic Scans (SOS Broadcast Deck)</span>
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="rounded-xl overflow-hidden border border-red-500/20 glow-border-red h-14 bg-black/40">
+                    <img src="/emergency_1.jpg" className="w-full h-full object-cover opacity-80 hover:opacity-100 hover:scale-105 transition-all" alt="Card Scan A" />
+                  </div>
+                  <div className="rounded-xl overflow-hidden border border-red-500/20 glow-border-red h-14 bg-black/40">
+                    <img src="/emergency_2.jpg" className="w-full h-full object-cover opacity-80 hover:opacity-100 hover:scale-105 transition-all" alt="Card Scan B" />
+                  </div>
+                  <div className="rounded-xl overflow-hidden border border-red-500/20 glow-border-red h-14 bg-black/40">
+                    <img src="/emergency_3.jpg" className="w-full h-full object-cover opacity-80 hover:opacity-100 hover:scale-105 transition-all" alt="Card Scan C" />
+                  </div>
+                  <div className="rounded-xl overflow-hidden border border-red-500/20 glow-border-red h-14 bg-black/40">
+                    <img src="/emergency_4.jpg" className="w-full h-full object-cover opacity-80 hover:opacity-100 hover:scale-105 transition-all" alt="Card Scan D" />
+                  </div>
+                </div>
+              </div>
+
               {/* SOS Activator Button */}
               <button 
                 onClick={toggleEmergencyMode} 
-                className={`w-full py-4 rounded-xl font-extrabold text-sm tracking-wider uppercase transition-all duration-300 mt-8 ${
+                className={`w-full py-4 rounded-xl font-extrabold text-sm tracking-wider uppercase transition-all duration-300 mt-8 cursor-pointer ${
                   emergencyModeActive 
-                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
+                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse shadow-lg shadow-red-500/20' 
                     : 'bg-gradient-to-r from-red-600 to-red-800 text-white hover:opacity-90'
                 }`}
               >
@@ -1531,20 +1745,20 @@ export default function App() {
 
                 <button 
                   onClick={async () => {
-                    if (!docName || !docEmail) {
+                    if (!docName) {
                       alert("Please fill in physician details.");
                       return;
                     }
                     await createDoctorShare({
                       doctorName: docName,
-                      specialty: docSpecialty,
-                      email: docEmail,
+                      specialty: docSpecialty || 'General Practitioner',
+                      email: docEmail || 'doctor@health.org',
                       permissions: docPermissions,
                       duration: docDuration
                     });
-                    alert("Doctor share workspace link generated successfully.");
+                    setActiveDoctorPreview(true);
                   }}
-                  className="w-full bg-gradient-to-r from-[#00f2fe] to-[#0077ff] text-[#030712] font-bold py-3.5 rounded-xl shadow-lg mt-6"
+                  className="w-full bg-gradient-to-r from-[#00f2fe] to-[#0077ff] text-[#030712] font-bold py-3.5 rounded-xl shadow-lg mt-6 cursor-pointer"
                 >
                   GENERATE COLLABORATION WORKSPACE
                 </button>
@@ -1740,15 +1954,54 @@ export default function App() {
               </div>
 
               {/* Center Column: Digital Twin Projection */}
-              <div className="xl:col-span-2 glass-panel rounded-2xl p-6 flex flex-col justify-between items-center relative min-h-[400px]">
-                <span className="text-xs font-mono text-cyan-400 self-start">FUTURE DIGITAL TWIN SIMULATION</span>
-                <div className="w-full h-72 my-auto relative">
+              <div className="xl:col-span-2 glass-panel rounded-2xl p-6 flex flex-col justify-between relative min-h-[420px]">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs font-mono text-cyan-400">FUTURE DIGITAL TWIN SIMULATION</span>
+                  
+                  {/* View Toggles */}
+                  <div className="flex gap-1.5 p-1 bg-[#050a18] border border-cyan-950 rounded-lg">
+                    <button 
+                      onClick={() => setSimulationView('3d')}
+                      className={`px-3 py-1 text-[10px] font-mono rounded-md transition-all ${
+                        simulationView === '3d' ? 'bg-cyan-950 text-[#00f2fe]' : 'text-gray-500 hover:text-white'
+                      }`}
+                    >
+                      3D Model
+                    </button>
+                    <button 
+                      onClick={() => setSimulationView('hologram')}
+                      className={`px-3 py-1 text-[10px] font-mono rounded-md transition-all ${
+                        simulationView === 'hologram' ? 'bg-cyan-950 text-[#00f2fe]' : 'text-gray-500 hover:text-white'
+                      }`}
+                    >
+                      AI Hologram Map
+                    </button>
+                  </div>
+                </div>
+
+                <div className="w-full h-80 my-auto relative flex items-center justify-center overflow-hidden rounded-xl">
                   {simulationActive && (
                     <div className="absolute inset-0 bg-[#030712]/40 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
                       <RefreshCw className="w-8 h-8 text-amber-500 animate-spin" />
                     </div>
                   )}
-                  <DigitalTwin />
+                  
+                  {simulationView === '3d' ? (
+                    <div className="w-full h-full">
+                      <DigitalTwin />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full relative group">
+                      <img 
+                        src="/ai_intervention_center.jpg" 
+                        className="w-full h-full object-cover rounded-xl border border-cyan-500/20 glow-border-cyan group-hover:scale-105 transition-all duration-500" 
+                        alt="AI Intervention Optimization Command Center" 
+                      />
+                      <div className="absolute bottom-3 left-3 bg-[#030712]/80 border border-cyan-950/80 px-2 py-1 rounded text-[9px] font-mono text-cyan-400">
+                        ⚡ AI SIMULATION MULTIVERSE ACTIVE
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1818,9 +2071,25 @@ export default function App() {
                               updateSimulationParam('diet', strat.lifestyle.diet);
                               updateSimulationParam('stress', strat.lifestyle.stress);
                               runSimulation();
-                              alert(`Interventions applied. Digital twin calibrated to: ${strat.name}`);
+                              
+                              const newEvent = {
+                                id: `time-${Date.now()}`,
+                                date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                title: `Applied Optimizer: ${strat.name}`,
+                                category: 'simulation',
+                                status: 'Active Strategy',
+                                score: strat.score,
+                                details: `${strat.riskReduction}. Target changes: Sleep ${strat.lifestyle.sleep}h, Water ${strat.lifestyle.water}L, Exercise ${strat.lifestyle.exercise}d.`,
+                                icon: '⚡'
+                              };
+                              useHealthStore.setState((state) => ({
+                                timelineEvents: [newEvent, ...state.timelineEvents]
+                              }));
+
+                              setActiveTab('timeline');
+                              setScreen('timeline');
                             }}
-                            className="px-2 py-1 bg-cyan-950/50 hover:bg-cyan-950 border border-cyan-400/30 text-[9px] font-mono text-cyan-400 rounded"
+                            className="px-2 py-1 bg-cyan-950/50 hover:bg-cyan-950 border border-cyan-400/30 text-[9px] font-mono text-cyan-400 rounded cursor-pointer"
                           >
                             APPLY PLAN
                           </button>
@@ -1876,19 +2145,23 @@ export default function App() {
       case 'profile':
         return (
           <div className="min-h-screen bg-[#030712] p-8 flex flex-col justify-center items-center">
-            <div className="w-full max-w-xl glass-panel p-8 rounded-3xl space-y-6 relative overflow-hidden">
+            <div className="w-full max-w-xl glass-panel p-8 rounded-3xl space-y-6 relative overflow-hidden border border-cyan-400/20">
+              <div className="absolute top-0 right-0 w-36 h-36 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
+
               <div className="flex justify-between items-center border-b border-cyan-950/40 pb-4">
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setScreen('dashboard')} className="w-7 h-7 rounded bg-cyan-950 border border-cyan-400/20 flex items-center justify-center text-white mr-2">
+                  <button onClick={() => setScreen('dashboard')} className="w-7 h-7 rounded bg-cyan-950 border border-cyan-400/20 flex items-center justify-center text-white mr-2 cursor-pointer">
                     <ArrowLeft className="w-4 h-4" />
                   </button>
-                  <h1 className="text-xl font-bold font-mono text-white">User Profile & Health Identity</h1>
+                  <h1 className="text-xl font-bold font-mono text-white">User Profile & Identity</h1>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <div className="flex items-center gap-4 p-4 bg-[#050a18]/40 border border-cyan-950/60 rounded-xl">
-                  <img src={userAvatar} className="w-16 h-16 rounded-full border border-cyan-400/30 object-cover" alt="User" />
+                  <div className="w-16 h-16 rounded-full border-2 border-cyan-400/30 overflow-hidden bg-cyan-900/10">
+                    <img src={userAvatar} className="w-full h-full object-cover" alt="User" />
+                  </div>
                   <div>
                     <div className="text-base font-bold text-white font-mono">{user.name}</div>
                     <div className="text-xs font-mono text-cyan-400">{user.email}</div>
@@ -1896,14 +2169,30 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-                  <div className="p-3 bg-[#050a18]/50 border border-cyan-950/60 rounded-xl">
+                  <div className="p-3.5 bg-[#050a18]/50 border border-cyan-950/60 rounded-xl">
                     <span className="text-gray-500 block uppercase text-[9px]">Age</span>
                     <strong className="text-white mt-1 block text-sm">{user.age} Years</strong>
                   </div>
-                  <div className="p-3 bg-[#050a18]/50 border border-cyan-950/60 rounded-xl">
+                  <div className="p-3.5 bg-[#050a18]/50 border border-cyan-950/60 rounded-xl">
                     <span className="text-gray-500 block uppercase text-[9px]">Blood Group</span>
-                    <strong className="text-white mt-1 block text-sm">{user.bloodGroup}</strong>
+                    <strong className="text-white mt-1 block text-sm">{user.bloodGroup || 'O+'}</strong>
                   </div>
+                  <div className="p-3.5 bg-[#050a18]/50 border border-cyan-950/60 rounded-xl">
+                    <span className="text-gray-500 block uppercase text-[9px]">Height</span>
+                    <strong className="text-white mt-1 block text-sm">{user.height || 178} cm</strong>
+                  </div>
+                  <div className="p-3.5 bg-[#050a18]/50 border border-cyan-950/60 rounded-xl">
+                    <span className="text-gray-500 block uppercase text-[9px]">Weight</span>
+                    <strong className="text-white mt-1 block text-sm">{user.weight || 76} kg</strong>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gradient-to-r from-cyan-950/40 to-blue-950/40 border border-cyan-400/25 rounded-2xl flex justify-between items-center">
+                  <div>
+                    <span className="text-xs font-mono text-cyan-400 font-bold block uppercase tracking-wider">Health Index Score</span>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Calculated dynamically across active biomarkers.</p>
+                  </div>
+                  <div className="text-2xl font-extrabold text-white font-mono">{healthScore}%</div>
                 </div>
               </div>
             </div>
@@ -1913,77 +2202,44 @@ export default function App() {
       case 'privacy':
         return (
           <div className="min-h-screen bg-[#030712] p-8 flex flex-col justify-center items-center">
-            <div className="w-full max-w-xl glass-panel p-8 rounded-3xl space-y-6 relative overflow-hidden border-[#00f2fe]/20">
+            <div className="w-full max-w-xl glass-panel p-8 rounded-3xl space-y-6 relative overflow-hidden border border-cyan-400/20">
               <div className="flex justify-between items-center border-b border-cyan-950/40 pb-4">
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setScreen('dashboard')} className="w-7 h-7 rounded bg-cyan-950 border border-cyan-400/20 flex items-center justify-center text-white mr-2">
+                  <button onClick={() => setScreen('dashboard')} className="w-7 h-7 rounded bg-cyan-950 border border-cyan-400/20 flex items-center justify-center text-white mr-2 cursor-pointer">
                     <ArrowLeft className="w-4 h-4" />
                   </button>
-                  <h1 className="text-xl font-bold font-mono text-white">Privacy, Consent & Security Center</h1>
+                  <h1 className="text-xl font-bold font-mono text-white">Privacy & Security Center</h1>
                 </div>
               </div>
 
               <div className="space-y-6 text-xs font-mono">
                 <div className="p-4 bg-[#050a18]/80 border border-cyan-950/60 rounded-2xl space-y-3">
-                  <h4 className="font-bold text-white text-sm">Granular Consent Access</h4>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" defaultChecked className="accent-cyan-400" /> Allow report parser OCR engine</label>
+                  <h4 className="font-bold text-white text-xs uppercase tracking-wider text-cyan-400">Zero-Trust HIPAA Consent Settings</h4>
+                  <div className="space-y-3 text-[11px] text-gray-300">
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input type="checkbox" defaultChecked className="accent-cyan-400 w-4 h-4" />
+                      <span>Allow automated OCR biomarker parsing pipelines</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input type="checkbox" defaultChecked className="accent-cyan-400 w-4 h-4" />
+                      <span>Encrypt digital twin representation layers on device</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input type="checkbox" defaultChecked className="accent-cyan-400 w-4 h-4" />
+                      <span>Revoke physician shares automatically after token timeout</span>
+                    </label>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        );
 
-      case 'settings':
-        return (
-          <div className="min-h-screen bg-[#030712] p-8 flex flex-col justify-center items-center">
-            <div className="w-full max-w-xl glass-panel p-8 rounded-3xl space-y-6 relative overflow-hidden">
-              <div className="flex justify-between items-center border-b border-cyan-950/40 pb-4">
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setScreen('dashboard')} className="w-7 h-7 rounded bg-cyan-950 border border-cyan-400/20 flex items-center justify-center text-white mr-2">
-                    <ArrowLeft className="w-4 h-4" />
-                  </button>
-                  <h1 className="text-xl font-bold font-mono text-white">Settings & AI Personalization</h1>
-                </div>
-              </div>
-
-              <div className="space-y-6 font-mono text-xs">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-gray-400 mb-2">INTERFACE COMPONENT THEME</label>
-                    <select 
-                      value={theme}
-                      onChange={(e) => updateSettings({ theme: e.target.value as 'dark' | 'light' })}
-                      className="w-full bg-[#0a0f1e] border border-cyan-950 text-white rounded-lg p-2.5"
-                    >
-                      <option value="dark">Space Navy (Dark)</option>
-                      <option value="light">Medical White (Light)</option>
-                    </select>
+                <div className="p-4 bg-[#050a18]/40 border border-cyan-950/50 rounded-2xl space-y-2">
+                  <h4 className="font-bold text-white text-xs uppercase tracking-wider text-amber-500">Security Signature Integrity</h4>
+                  <p className="text-[10px] text-gray-400 leading-relaxed">
+                    All digital twin configurations and laboratory extractions are signed locally using secure cryptographic keys.
+                  </p>
+                  <div className="bg-[#030712] p-2.5 border border-cyan-950 rounded text-[9px] text-[#00f2fe] select-all truncate">
+                    SHA256: {btoa(user.email || 'biomirror').substring(0, 32)}...
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'about':
-        return (
-          <div className="min-h-screen bg-[#030712] p-8 flex flex-col justify-center items-center">
-            <div className="w-full max-w-xl glass-panel p-8 rounded-3xl space-y-6 relative overflow-hidden">
-              <div className="flex justify-between items-center border-b border-cyan-950/40 pb-4">
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setScreen('dashboard')} className="w-7 h-7 rounded bg-cyan-950 border border-cyan-400/20 flex items-center justify-center text-white mr-2">
-                    <ArrowLeft className="w-4 h-4" />
-                  </button>
-                  <h1 className="text-xl font-bold font-mono text-white">About BioMirror AI Ecosystem</h1>
-                </div>
-              </div>
-
-              <div className="space-y-4 text-xs leading-relaxed text-gray-300">
-                <p>
-                  BioMirror AI is a cutting-edge clinical simulation sandbox designed to bridge the gap between complex diagnostic documentation and patients' visual wellness.
-                </p>
               </div>
             </div>
           </div>
@@ -2002,6 +2258,27 @@ export default function App() {
       {['login', 'onboarding', 'dashboard'].includes(currentScreen) 
         ? renderPage() 
         : renderAdditionalScreens()}
+
+      {/* Floating OTP dialogue notification */}
+      {visibleOtpPopup && (
+        <div className="fixed bottom-6 right-6 glass-panel p-5 rounded-2xl z-50 border border-cyan-400/30 w-80 animate-slideIn">
+          <div className="flex items-center gap-2 mb-2 text-cyan-400 text-xs font-mono font-bold uppercase tracking-wider">
+            <Zap className="w-4 h-4 text-amber-400 animate-bounce" /> Secure OTP Transmitter
+          </div>
+          <p className="text-[11px] text-gray-300 mb-3">
+            A secure one-time passcode has been sent to your simulated device.
+          </p>
+          <div className="bg-[#050a18] border border-cyan-950 px-4 py-2.5 rounded-lg text-center font-mono font-extrabold text-lg text-white tracking-widest">
+            {visibleOtpPopup}
+          </div>
+          <button 
+            onClick={() => setVisibleOtpPopup(null)}
+            className="w-full mt-3 py-1.5 bg-cyan-950/40 border border-cyan-400/20 hover:bg-cyan-950 text-cyan-400 text-[10px] font-mono rounded-lg transition-all cursor-pointer"
+          >
+            DISMISS SECURE NOTIFICATION
+          </button>
+        </div>
+      )}
     </div>
   );
 }

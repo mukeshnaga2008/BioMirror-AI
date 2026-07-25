@@ -163,3 +163,11 @@
     scrollbar-width: none;
   }
 }
+
+.grand-hologram-bg {
+  background-image: radial-gradient(circle at center, rgba(3, 7, 18, 0.75) 0%, #030712 100%), url('/biomirror_bg_1784908491937.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}

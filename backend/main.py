@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import uuid
@@ -230,35 +231,134 @@ def toggle_sos(email: str = Depends(get_current_user_email)):
 def get_sos_status(email: str = Depends(get_current_user_email)):
     return {"active": email in emergency_active_users}
 
-@app.get("/api/v1/sos/report/{token}")
-def get_sos_report(token: str, db = Depends(get_db)):
-    # token will look like 'sos-{email}'
+@app.get("/api/v1/sos/status-public")
+def get_sos_status_public(token: str):
     if not token.startswith("sos-"):
-        raise HTTPException(status_code=400, detail="Invalid SOS token")
+        return {"active": False}
+    email = token.replace("sos-", "")
+    return {"active": email in emergency_active_users}
+
+@app.get("/api/v1/sos/report/{token}", response_class=HTMLResponse)
+def get_sos_report(token: str, db = Depends(get_db)):
+    if not token.startswith("sos-"):
+        return HTMLResponse(content="<h1>Invalid SOS token format</h1>", status_code=400)
     email = token.replace("sos-", "")
     if email not in emergency_active_users:
-        raise HTTPException(status_code=403, detail="Access Denied. SOS Mode is inactive. Patient clinical metadata is securely encrypted.")
-    
+        html_content = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>BioMirror AI - SOS Access Denied</title>
+            <style>
+                body { background: #030712; color: #f3f4f6; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+                .card { background: rgba(10, 15, 30, 0.85); border: 1px solid rgba(239, 68, 68, 0.4); padding: 35px 25px; border-radius: 24px; max-width: 440px; text-align: center; box-shadow: 0 0 30px rgba(239, 68, 68, 0.15); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+                h1 { color: #f87171; font-size: 20px; margin-top: 15px; font-weight: bold; letter-spacing: 0.5px; }
+                p { color: #9ca3af; font-size: 13px; line-height: 1.6; margin-top: 10px; }
+                .lock { font-size: 54px; margin-bottom: 5px; }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <div class="lock">🔒</div>
+                <h1>EMERGENCY PORTAL ENCRYPTED</h1>
+                <p>SOS Broadcasting Mode is currently <strong>INACTIVE</strong> for this twin. The patient's clinical metadata remains securely isolated and private.</p>
+            </div>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=html_content, status_code=403)
+        
     user = db.query(DbUser).filter(DbUser.email == email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Patient record not found")
-    
-    # Collect biomarkers
+        return HTMLResponse(content="<h1>Patient record not found</h1>", status_code=404)
+        
     reports = db.query(DbReport).filter(DbReport.user_id == user.id).all()
     report_ids = [r.id for r in reports]
     biomarkers = db.query(DbBiomarker).filter(DbBiomarker.report_id.in_(report_ids)).all() if report_ids else []
     
-    return {
-        "user": user,
-        "biomarkers": biomarkers,
-        "emergencyContact": {
-            "name": "John Doe",
-            "relation": "Friend",
-            "phone": "+91 98765 43210"
-        },
-        "allergies": ["Penicillin"],
-        "medications": ["Vitamin D Supplement"]
-    }
+    bio_list_html = "".join([f"<li><strong>{b.name}:</strong> {b.value} {b.unit} ({b.status.upper()})</li>" for b in biomarkers])
+    if not bio_list_html:
+        bio_list_html = "<li>No outlier active biomarkers registered.</li>"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>BioMirror AI - SOS Medical Broadcast</title>
+        <script>
+            // Active verification loop to check if SOS has been revoked by user
+            setInterval(async () => {{
+                try {{
+                    const res = await fetch('/api/v1/sos/status-public?token={token}');
+                    const data = await res.json();
+                    if (!data.active) {{
+                        window.location.reload();
+                    }}
+                }} catch (e) {{
+                    console.error("SOS status fetch failed", e);
+                }}
+            }}, 3000);
+        </script>
+        <style>
+            body {{ background: #030712; color: #f3f4f6; font-family: sans-serif; padding: 20px; margin: 0; box-sizing: border-box; }}
+            .container {{ max-width: 500px; margin: 20px auto; background: rgba(10, 15, 30, 0.85); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 24px; padding: 25px; box-shadow: 0 0 35px rgba(239, 68, 68, 0.2); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }}
+            .header {{ display: flex; flex-direction: column; align-items: center; text-align: center; border-bottom: 1px solid rgba(239, 68, 68, 0.25); padding-bottom: 20px; margin-bottom: 20px; }}
+            .badge {{ background: #ef4444; color: white; padding: 6px 12px; border-radius: 10px; font-size: 11px; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 10px; }}
+            h1 {{ font-size: 20px; margin: 0; color: white; }}
+            .section {{ margin-bottom: 22px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 15px; }}
+            .section-title {{ font-size: 11px; text-transform: uppercase; color: #f87171; letter-spacing: 1.2px; font-weight: bold; margin-bottom: 10px; }}
+            .grid {{ display: grid; grid-template-columns: 1fr 1.2fr; gap: 8px; font-size: 13px; }}
+            .label {{ color: #9ca3af; }}
+            .value {{ color: white; font-weight: bold; }}
+            .value.red {{ color: #f87171; }}
+            ul {{ padding-left: 20px; font-size: 12px; line-height: 1.6; color: #d1d5db; margin: 0; }}
+            li {{ margin-bottom: 6px; }}
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <span class="badge">🚨 EMERGENCY SOS BROADCAST</span>
+                    <h1>BioMirror Health Record</h1>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Patient Profile</div>
+                    <div class="grid">
+                        <span class="label">Full Name:</span> <span class="value">{user.name}</span>
+                        <span class="label">Age / Gender:</span> <span class="value">{user.age} Yrs / {user.gender}</span>
+                        <span class="label">Blood Group:</span> <span class="value red">{user.blood_group}</span>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Allergies & Medications</div>
+                    <div class="grid">
+                        <span class="label">Chronic Allergies:</span> <span class="value">Penicillin</span>
+                        <span class="label">Active Meds:</span> <span class="value">Vitamin D Supplement</span>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Emergency Contact</div>
+                    <div class="grid">
+                        <span class="label">Name (Relation):</span> <span class="value">John Doe (Friend)</span>
+                        <span class="label">Phone Number:</span> <span class="value font-mono text-cyan-400">+91 98765 43210</span>
+                    </div>
+                </div>
+
+                <div class="section" style="border: none; padding: 0; margin: 0;">
+                    <div class="section-title">Active AI Biomarkers</div>
+                    <ul>
+                        {bio_list_html}
+                    </ul>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    return HTMLResponse(content=html_content, status_code=200)
 
 # Clinical / Reports Endpoint
 @app.post("/api/v1/reports")

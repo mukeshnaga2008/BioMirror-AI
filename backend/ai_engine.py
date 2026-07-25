@@ -35,37 +35,40 @@ BIOMARKER_METADATA = {
 }
 
 def parse_report_and_reason(file_name: str):
-    """
-    Simulates OCR document reading and applies medical NLP rules.
-    Injects specific outliers to trigger 'monitor' states for bones (Vitamin D)
-    and liver (ALT) to match Mukesh's default profile scenario.
-    """
-    results = []
+    file_name_lower = file_name.lower()
     
-    # Simulate a typical panel
-    for name, meta in BIOMARKER_METADATA.items():
-        if name == "Vitamin D3":
-            # Low Vitamin D
-            val = 18.0
-            status = "low"
-        elif name == "ALT Enzyme":
-            # High ALT
-            val = 52.0
-            status = "high"
-        else:
-            # Random normal values within reference range
-            low, high = map(float, meta["reference_range"].split(" - "))
-            val = round(random.uniform(low, high), 1)
-            status = "normal"
-            
-        results.append({
-            "name": name,
-            "value": val,
-            "unit": meta["unit"],
-            "status": status,
-            "reference_range": meta["reference_range"],
-            "organ": meta["organ"],
-            "description": meta["description"]
-        })
-        
-    return results
+    if "metabolic" in file_name_lower:
+        # Glucose high, ALT high
+        return [
+            {"name": "Fasting Glucose", "value": 145.0, "unit": "mg/dL", "status": "high", "reference_range": "70 - 99", "organ": "pancreas", "description": "Primary monosaccharide fueling cells."},
+            {"name": "ALT Enzyme", "value": 58.0, "unit": "U/L", "status": "high", "reference_range": "10 - 40", "organ": "liver", "description": "Liver enzyme indicating processing strain."},
+            {"name": "Vitamin D3", "value": 32.0, "unit": "ng/mL", "status": "normal", "reference_range": "30 - 100", "organ": "bones", "description": "Supports calcium absorption and bone density."},
+            {"name": "Hemoglobin", "value": 14.5, "unit": "g/dL", "status": "normal", "reference_range": "13.5 - 17.5", "organ": "heart", "description": "Oxygen-carrying protein in red blood cells."},
+            {"name": "Creatinine", "value": 0.9, "unit": "mg/dL", "status": "normal", "reference_range": "0.6 - 1.2", "organ": "kidneys", "description": "Waste product filtered by kidneys."}
+        ]
+    elif "skeletal" in file_name_lower or "bone" in file_name_lower:
+        # Vitamin D3 low
+        return [
+            {"name": "Vitamin D3", "value": 12.0, "unit": "ng/mL", "status": "low", "reference_range": "30 - 100", "organ": "bones", "description": "Supports calcium absorption and bone density."},
+            {"name": "Creatinine", "value": 0.8, "unit": "mg/dL", "status": "normal", "reference_range": "0.6 - 1.2", "organ": "kidneys", "description": "Waste product filtered by kidneys."},
+            {"name": "Hemoglobin", "value": 14.2, "unit": "g/dL", "status": "normal", "reference_range": "13.5 - 17.5", "organ": "heart", "description": "Oxygen-carrying protein in red blood cells."},
+            {"name": "ALT Enzyme", "value": 24.0, "unit": "U/L", "status": "normal", "reference_range": "10 - 40", "organ": "liver", "description": "Liver enzyme indicating processing strain."},
+            {"name": "Fasting Glucose", "value": 85.0, "unit": "mg/dL", "status": "normal", "reference_range": "70 - 99", "organ": "pancreas", "description": "Primary monosaccharide fueling cells."}
+        ]
+    elif "cardio" in file_name_lower or "lipid" in file_name_lower:
+        # Hemoglobin low, Creatinine high
+        return [
+            {"name": "Hemoglobin", "value": 11.2, "unit": "g/dL", "status": "low", "reference_range": "13.5 - 17.5", "organ": "heart", "description": "Oxygen-carrying protein in red blood cells."},
+            {"name": "Creatinine", "value": 1.6, "unit": "mg/dL", "status": "high", "reference_range": "0.6 - 1.2", "organ": "kidneys", "description": "Waste product filtered by kidneys."},
+            {"name": "ALT Enzyme", "value": 22.0, "unit": "U/L", "status": "normal", "reference_range": "10 - 40", "organ": "liver", "description": "Liver enzyme indicating processing strain."},
+            {"name": "Vitamin D3", "value": 35.0, "unit": "ng/mL", "status": "normal", "reference_range": "30 - 100", "organ": "bones", "description": "Supports calcium absorption and bone density."},
+            {"name": "Fasting Glucose", "value": 88.0, "unit": "mg/dL", "status": "normal", "reference_range": "70 - 99", "organ": "pancreas", "description": "Primary monosaccharide fueling cells."}
+        ]
+    else:
+        # Fallback combination
+        return [
+            {"name": "Vitamin D3", "value": 18.0, "unit": "ng/mL", "status": "low", "reference_range": "30 - 100", "organ": "bones", "description": "Supports calcium absorption and bone density."},
+            {"name": "ALT Enzyme", "value": 52.0, "unit": "U/L", "status": "high", "reference_range": "10 - 40", "organ": "liver", "description": "Liver enzyme indicating processing strain."},
+            {"name": "Hemoglobin", "value": 14.8, "unit": "g/dL", "status": "normal", "reference_range": "13.5 - 17.5", "organ": "heart", "description": "Oxygen-carrying protein in red blood cells."},
+            {"name": "Creatinine", "value": 0.9, "unit": "mg/dL", "status": "normal", "reference_range": "0.6 - 1.2", "organ": "kidneys", "description": "Waste product filtered by kidneys."}
+        ]

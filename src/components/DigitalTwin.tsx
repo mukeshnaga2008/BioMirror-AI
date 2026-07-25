@@ -1,8 +1,21 @@
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { useHealthStore } from '../store/healthStore';
+
+// Individual Organ Component inside the 3D Scene
+// Texture map linking organ names to uploaded transparent PNG files
+const organTextureMap: Record<string, string> = {
+  brain: '/brain.png',
+  heart: '/heart.png',
+  lungs: '/lungs.png',
+  liver: '/liver.png',
+  kidneys: '/kidneys.png',
+  stomach: '/stomach.png',
+  intestines: '/small_intestine.png',
+  bones: '/spinal_cord.png'
+};
 
 // Individual Organ Component inside the 3D Scene
 interface OrganMeshProps {
@@ -18,9 +31,11 @@ interface OrganMeshProps {
 }
 
 const OrganMesh: React.FC<OrganMeshProps> = ({
-  name, position, color, isSelected, onSelect, scale = 1, geometryType = 'sphere', glowIntensity = 1.2, visible = true
+  name, position, color, isSelected, onSelect, scale = 1, glowIntensity = 1.2, visible = true
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
+  const texturePath = organTextureMap[name.toLowerCase()] || '/heart.png';
+  const texture = useTexture(texturePath);
 
   // Animate pulse
   useFrame(({ clock }) => {
@@ -28,38 +43,17 @@ const OrganMesh: React.FC<OrganMeshProps> = ({
       const time = clock.getElapsedTime();
       const pulseSpeed = name.toLowerCase() === 'heart' ? 6.0 : 2.0;
       const pulseAmp = name.toLowerCase() === 'heart' ? 0.08 : 0.03;
-      
       const factor = 1.0 + Math.sin(time * pulseSpeed) * pulseAmp;
       
-      if (Array.isArray(scale)) {
-        meshRef.current.scale.set(scale[0] * factor, scale[1] * factor, scale[2] * factor);
-      } else {
-        meshRef.current.scale.set(scale * factor, scale * factor, scale * factor);
-      }
-      
-      meshRef.current.rotation.y = time * 0.3;
+      const baseScale = name.toLowerCase() === 'lungs' ? 0.22 : 0.16;
+      meshRef.current.scale.set(baseScale * factor, baseScale * factor, baseScale * factor);
     }
   });
 
   if (!visible) return null;
 
-  const getGeometry = () => {
-    switch (geometryType) {
-      case 'box':
-        return <boxGeometry args={[0.08, 0.08, 0.08]} />;
-      case 'cylinder':
-        return <cylinderGeometry args={[0.04, 0.04, 0.12, 16]} />;
-      case 'double-torus':
-        return <torusGeometry args={[0.05, 0.015, 8, 24]} />;
-      case 'helix':
-        return <torusGeometry args={[0.06, 0.02, 16, 32, Math.PI * 1.8]} />;
-      case 'cone':
-        return <coneGeometry args={[0.05, 0.1, 16]} />;
-      case 'sphere':
-      default:
-        return <sphereGeometry args={[0.055, 32, 32]} />;
-    }
-  };
+  const isCritical = color === '#ef4444';
+  const isMonitor = color === '#f59e0b';
 
   return (
     <mesh
@@ -70,16 +64,29 @@ const OrganMesh: React.FC<OrganMeshProps> = ({
         onSelect();
       }}
     >
-      {getGeometry()}
-      <meshStandardMaterial
+      <planeGeometry args={[1.0, 1.0]} />
+      <meshBasicMaterial
+        map={texture}
+        transparent={true}
         color={color}
-        emissive={color}
-        emissiveIntensity={isSelected ? 4.0 : glowIntensity}
-        roughness={0.1}
-        metalness={0.9}
-        transparent
-        opacity={0.8}
+        opacity={isSelected ? 1.0 : 0.85}
+        side={THREE.DoubleSide}
+        depthWrite={false}
       />
+      {(isCritical || isMonitor) && (
+        <mesh scale={[1.22, 1.22, 1.22]}>
+          <planeGeometry args={[1.0, 1.0]} />
+          <meshBasicMaterial
+            map={texture}
+            transparent={true}
+            color={color}
+            opacity={0.35}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      )}
     </mesh>
   );
 };
@@ -282,6 +289,51 @@ const FloatingHUD: React.FC<FloatingHUDProps> = ({ pelvisY, shoulderWidth }) => 
   );
 };
 
+// Luminous holographic 3D body loaded from custom GLB files
+interface HolographicBodyProps {
+  gender: string;
+  height: number;
+  weight: number;
+}
+
+const HolographicBody: React.FC<HolographicBodyProps> = ({ gender, height, weight }) => {
+  const modelPath = gender.toLowerCase() === 'female' ? '/female_front.glb' : '/male_front.glb';
+  const { scene } = useGLTF(modelPath);
+
+  const holographicModel = useMemo(() => {
+    const clone = scene.clone();
+    clone.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        (child as THREE.Mesh).material = new THREE.MeshStandardMaterial({
+          color: '#00f2fe',
+          emissive: '#0077ff',
+          emissiveIntensity: 0.9,
+          roughness: 0.1,
+          metalness: 0.9,
+          transparent: true,
+          opacity: 0.22,
+          wireframe: false,
+          side: THREE.DoubleSide
+        });
+      }
+    });
+    return clone;
+  }, [scene]);
+
+  // Dynamic scale stretching based on height (Y) and weight (X, Z)
+  const scaleX = 1.25 * (weight / 76);
+  const scaleY = 1.25 * (height / 178);
+  const scaleZ = 1.25 * (weight / 76);
+
+  return (
+    <primitive 
+      object={holographicModel} 
+      scale={[scaleX, scaleY, scaleZ]} 
+      position={[0, -1.0, 0]} 
+    />
+  );
+};
+
 const RotatingTwin: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const groupRef = useRef<THREE.Group>(null);
   useFrame(({ clock }) => {
@@ -298,13 +350,32 @@ const RotatingTwin: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   return <group ref={groupRef}>{children}</group>;
 };
 
+// High-fidelity Spinal Cord (Skeleton) Texture Overlay
+const BoneTextureMesh: React.FC<{ position: [number, number, number]; torsoHeight: number }> = ({ position, torsoHeight }) => {
+  const texture = useTexture('/spinal_cord.png');
+  return (
+    <mesh position={position}>
+      <planeGeometry args={[0.3, torsoHeight * 1.5]} />
+      <meshBasicMaterial map={texture} transparent={true} color="#a5f3fc" opacity={0.8} side={THREE.DoubleSide} depthWrite={false} />
+    </mesh>
+  );
+};
+
+// High-fidelity Blood Vessels Texture Overlay
+const VesselTextureMesh: React.FC<{ position: [number, number, number]; torsoHeight: number }> = ({ position, torsoHeight }) => {
+  const texture = useTexture('/blood_vessels.png');
+  return (
+    <mesh position={position}>
+      <planeGeometry args={[0.42, torsoHeight * 1.5]} />
+      <meshBasicMaterial map={texture} transparent={true} color="#f87171" opacity={0.75} side={THREE.DoubleSide} depthWrite={false} />
+    </mesh>
+  );
+};
+
 const AnatomicalCore: React.FC<AnatomicalCoreProps> = ({ gender, height, weight, visibility }) => {
-
-
   const heightScale = height / 175;
   const weightScale = weight / 70;
 
-  // Proportions: Female wider hips, Male wider shoulders
   const shoulderWidth = gender.toLowerCase() === 'female' ? 0.24 * weightScale : 0.36 * weightScale;
   const hipWidth = gender.toLowerCase() === 'female' ? 0.32 * weightScale : 0.24 * weightScale;
   const torsoHeight = 0.55 * heightScale;
@@ -312,94 +383,6 @@ const AnatomicalCore: React.FC<AnatomicalCoreProps> = ({ gender, height, weight,
   
   const bodyBaseY = -0.5;
   const pelvisY = bodyBaseY + legLength;
-  const neckY = pelvisY + torsoHeight;
-  const headY = neckY + 0.12;
-
-  // 1. Skeleton Bones (light blue)
-  const boneLines = useMemo(() => {
-    const points: THREE.Vector3[] = [];
-    
-    // Spine
-    points.push(new THREE.Vector3(0, pelvisY, 0), new THREE.Vector3(0, neckY, 0));
-    
-    // Rib cage mock rings (horizontal)
-    for (let r = 0; r < 5; r++) {
-      const ry = pelvisY + torsoHeight * 0.4 + (r * 0.06);
-      const rSize = shoulderWidth * 0.35 * (1 - r * 0.05);
-      // Half circular lines
-      for (let theta = 0; theta < Math.PI * 2; theta += 0.4) {
-        const x1 = Math.cos(theta) * rSize;
-        const z1 = Math.sin(theta) * rSize * 0.6;
-        const x2 = Math.cos(theta + 0.4) * rSize;
-        const z2 = Math.sin(theta + 0.4) * rSize * 0.6;
-        points.push(new THREE.Vector3(x1, ry, z1), new THREE.Vector3(x2, ry, z2));
-      }
-    }
-
-    // Shoulders / Collarbone
-    points.push(new THREE.Vector3(-shoulderWidth * 0.5, neckY, 0), new THREE.Vector3(shoulderWidth * 0.5, neckY, 0));
-    
-    // Pelvis (Wider for female)
-    points.push(new THREE.Vector3(-hipWidth * 0.5, pelvisY, 0), new THREE.Vector3(hipWidth * 0.5, pelvisY, 0));
-    points.push(new THREE.Vector3(-hipWidth * 0.5, pelvisY, 0), new THREE.Vector3(0, pelvisY - 0.05, 0));
-    points.push(new THREE.Vector3(hipWidth * 0.5, pelvisY, 0), new THREE.Vector3(0, pelvisY - 0.05, 0));
-
-    // Left Arm
-    points.push(new THREE.Vector3(-shoulderWidth * 0.5, neckY, 0), new THREE.Vector3(-shoulderWidth * 0.6, neckY - torsoHeight * 0.4, 0));
-    points.push(new THREE.Vector3(-shoulderWidth * 0.6, neckY - torsoHeight * 0.4, 0), new THREE.Vector3(-shoulderWidth * 0.65, neckY - torsoHeight * 0.85, 0));
-
-    // Right Arm
-    points.push(new THREE.Vector3(shoulderWidth * 0.5, neckY, 0), new THREE.Vector3(shoulderWidth * 0.6, neckY - torsoHeight * 0.4, 0));
-    points.push(new THREE.Vector3(shoulderWidth * 0.6, neckY - torsoHeight * 0.4, 0), new THREE.Vector3(shoulderWidth * 0.65, neckY - torsoHeight * 0.85, 0));
-
-    // Left Leg
-    points.push(new THREE.Vector3(-hipWidth * 0.4, pelvisY, 0), new THREE.Vector3(-hipWidth * 0.38, pelvisY - legLength * 0.5, 0));
-    points.push(new THREE.Vector3(-hipWidth * 0.38, pelvisY - legLength * 0.5, 0), new THREE.Vector3(-hipWidth * 0.35, bodyBaseY, 0));
-
-    // Right Leg
-    points.push(new THREE.Vector3(hipWidth * 0.4, pelvisY, 0), new THREE.Vector3(hipWidth * 0.38, pelvisY - legLength * 0.5, 0));
-    points.push(new THREE.Vector3(hipWidth * 0.38, pelvisY - legLength * 0.5, 0), new THREE.Vector3(hipWidth * 0.35, bodyBaseY, 0));
-
-    return points;
-  }, [gender, height, weight]);
-
-  // 2. Nervous System (Cyan/Blue lines radiating from brain)
-  const neuralLines = useMemo(() => {
-    const points: THREE.Vector3[] = [];
-    const brainCenter = new THREE.Vector3(0, headY, 0);
-    points.push(brainCenter, new THREE.Vector3(0, pelvisY, 0));
-
-    for (let y = pelvisY + 0.05; y < neckY; y += 0.05) {
-      const isLeft = Math.random() > 0.5;
-      const angle = isLeft ? Math.PI + Math.random() * 0.5 : -Math.random() * 0.5;
-      const span = shoulderWidth * 0.4;
-      const tip = new THREE.Vector3(Math.cos(angle) * span, y - 0.08, Math.sin(angle) * span * 0.5);
-      points.push(new THREE.Vector3(0, y, 0), tip);
-    }
-    return points;
-  }, [gender, height, weight]);
-
-  // 3. Blood Vessels (Red/Pink lines radiating from Heart)
-  const bloodLines = useMemo(() => {
-    const points: THREE.Vector3[] = [];
-    const heartCenter = new THREE.Vector3(-0.03, neckY - torsoHeight * 0.3, 0.04);
-    points.push(heartCenter, new THREE.Vector3(0, neckY, 0));
-    points.push(heartCenter, new THREE.Vector3(0, pelvisY, 0));
-
-    points.push(heartCenter, new THREE.Vector3(-shoulderWidth * 0.5, neckY, 0));
-    points.push(heartCenter, new THREE.Vector3(shoulderWidth * 0.5, neckY, 0));
-    
-    for (let i = 0; i < 15; i++) {
-      const progress = Math.random();
-      const startY = pelvisY + progress * (neckY - pelvisY);
-      const isLeft = Math.random() > 0.5;
-      const width = shoulderWidth * 0.35 * (1 - Math.abs(progress - 0.5) * 0.5);
-      const start = new THREE.Vector3(0, startY, 0);
-      const end = new THREE.Vector3(isLeft ? -width : width, startY - 0.04, Math.random() * 0.05);
-      points.push(start, end);
-    }
-    return points;
-  }, [gender, height, weight]);
 
   return (
     <group>
@@ -411,7 +394,7 @@ const AnatomicalCore: React.FC<AnatomicalCoreProps> = ({ gender, height, weight,
             color="#ef4444" 
             wireframe 
             transparent 
-            opacity={0.06} 
+            opacity={0.03} 
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -419,41 +402,16 @@ const AnatomicalCore: React.FC<AnatomicalCoreProps> = ({ gender, height, weight,
 
       {/* Bones */}
       {visibility.skeleton && (
-        <lineSegments key={boneLines.length}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              args={[new Float32Array(boneLines.flatMap(p => [p.x, p.y, p.z])), 3]}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial color="#e0f2fe" transparent opacity={0.45} />
-        </lineSegments>
+        <group>
+          <BoneTextureMesh position={[0, pelvisY + torsoHeight * 0.45, 0.015]} torsoHeight={torsoHeight} />
+        </group>
       )}
 
-      {/* Neural Lines (Blue) */}
-      {visibility.nervousSystem && (
-        <lineSegments key={neuralLines.length}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              args={[new Float32Array(neuralLines.flatMap(p => [p.x, p.y, p.z])), 3]}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial color="#0077ff" transparent opacity={0.35} />
-        </lineSegments>
-      )}
-
-      {/* Blood Lines (Red) */}
+      {/* Blood Vessels */}
       {visibility.bloodVessels && (
-        <lineSegments key={bloodLines.length}>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              args={[new Float32Array(bloodLines.flatMap(p => [p.x, p.y, p.z])), 3]}
-            />
-          </bufferGeometry>
-          <lineBasicMaterial color="#ef4444" transparent opacity={0.35} />
-        </lineSegments>
+        <group>
+          <VesselTextureMesh position={[0, pelvisY + torsoHeight * 0.45, 0.02]} torsoHeight={torsoHeight} />
+        </group>
       )}
     </group>
   );
@@ -585,6 +543,9 @@ export const DigitalTwin: React.FC<DigitalTwinProps> = ({
             visibility={visibility}
           />
 
+          {/* Luminous 3D Surface Mesh from GLB */}
+          <HolographicBody gender={user.gender} height={user.height} weight={user.weight} />
+
           {/* 3D Visual Organs */}
           {visibility.organs && (
             <>
@@ -690,6 +651,55 @@ export const DigitalTwin: React.FC<DigitalTwinProps> = ({
         <div className="text-amber-500">● MONITOR: Liver, Bones</div>
         <div className="text-purple-400">● MAPPED: Stomach, Intestines</div>
       </div>
+
+      {/* Floating Organ Analysis Card */}
+      {selectedOrgan && organs[selectedOrgan] && (
+        <div className="absolute bottom-4 left-4 right-4 md:right-auto md:w-80 glass-panel p-5 rounded-2xl z-10 flex flex-col gap-3.5 border border-[#00f2fe]/30 shadow-lg shadow-[#00f2fe]/5">
+          <div className="flex justify-between items-start">
+            <div>
+              <h4 className="text-xs font-mono text-[#00f2fe] uppercase tracking-wider">Anatomical Inspection</h4>
+              <h3 className="text-base font-extrabold text-white font-mono uppercase mt-0.5">{selectedOrgan}</h3>
+            </div>
+            <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full uppercase border ${
+              organs[selectedOrgan].status === 'healthy' 
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                : organs[selectedOrgan].status === 'monitor'
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                : 'bg-red-500/10 text-red-400 border-red-500/20'
+            }`}>
+              {organs[selectedOrgan].status}
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            <div className="flex justify-between items-center text-xs border-b border-cyan-950/40 pb-1.5">
+              <span className="text-gray-400">Health Index Score:</span>
+              <span className="font-mono text-white font-bold">{organs[selectedOrgan].healthScore}%</span>
+            </div>
+            
+            <div className="text-[11px] text-gray-300 leading-relaxed font-sans">
+              <strong className="text-white block mb-0.5 font-mono text-[10px] uppercase text-[#00f2fe]/80">Primary Biomarkers:</strong>
+              {organs[selectedOrgan].biomarkers?.join(', ') || 'N/A'}
+            </div>
+
+            <div className="text-[11px] text-gray-300 leading-relaxed font-sans">
+              <strong className="text-white block mb-0.5 font-mono text-[10px] uppercase text-amber-400">Diagnostics:</strong>
+              {organs[selectedOrgan].reason || 'Metrics operate within target range.'}
+            </div>
+
+            <div className="text-[10px] text-gray-400 italic leading-normal border-t border-cyan-950/40 pt-2 font-mono">
+              {organs[selectedOrgan].details || 'No chronic alerts detected.'}
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setSelectedOrgan(null)}
+            className="w-full py-1.5 bg-cyan-950/50 hover:bg-cyan-900/80 border border-cyan-400/20 text-[10px] font-mono text-cyan-400 rounded-lg tracking-wider cursor-pointer"
+          >
+            DISMISS REPORT
+          </button>
+        </div>
+      )}
     </div>
   );
 };
